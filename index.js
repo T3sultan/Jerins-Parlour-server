@@ -19,6 +19,21 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     await client.connect();
+    const parlours = client.db("jerins-parlour");
+    const parlourCollection = parlours.collection("parlours");
+
+    //service create api
+    app.post("/parlour", async (req, res) => {
+      const newParlour = req.body;
+      const result = await parlourCollection.insertOne(newParlour);
+      res.send(result);
+    });
+    app.get("/parlour", async (req, res) => {
+      const query = {};
+      const cursor = parlourCollection.find(query);
+      const parlour = await cursor.toArray();
+      res.send(parlour);
+    });
   } finally {
     // await client.close()
   }
