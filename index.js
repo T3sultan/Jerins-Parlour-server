@@ -21,6 +21,7 @@ async function run() {
     await client.connect();
     const parlours = client.db("jerins-parlour");
     const parlourCollection = parlours.collection("parlours");
+    const bookingCollection = parlours.collection("booking");
 
     //service create api
     app.post("/parlour", async (req, res) => {
@@ -33,6 +34,20 @@ async function run() {
       const cursor = parlourCollection.find(query);
       const parlour = await cursor.toArray();
       res.send(parlour);
+    });
+    app.post("/booking", async (req, res) => {
+      const booking = req.body;
+      const query = {
+        treatment: booking.treatment,
+        price: booking.price,
+        name: booking.name,
+      };
+      const exists = await bookingCollection.findOne(query);
+      if (exists) {
+        return res.send({ success: false, booking: exists });
+      }
+      const result = await bookingCollection.insertOne(booking);
+      return res.send({ success: true, result });
     });
   } finally {
     // await client.close()
