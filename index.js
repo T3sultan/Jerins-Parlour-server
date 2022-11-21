@@ -3,7 +3,10 @@ const cors = require("cors");
 const port = process.env.PORT || 5000;
 const app = express();
 require("dotenv").config();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const jwt = require("jsonwebtoken");
+
+// ACCESS_TOKEN_SECRET=4e90ca4f3664a3bf8616e78c45eb2c55730058cac3e71a5331484dd1c4000d77a786dbf8b0ef80426aaf02910da366b370dabd3eb6f50ec97a388273d9cebd7d
 
 app.use(cors());
 app.use(express.json());
@@ -15,6 +18,22 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
   serverApi: ServerApiVersion.v1,
 });
+function verifyJWT(req, res, next) {
+  // console.log("abc");
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ message: "UnAuthorized access" });
+  }
+  const token = authHeader.split(" ")[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+    if (err) {
+      return res.status(403).send({ message: "Forbidden access" });
+    }
+    // console.log(decoded); // bar
+    req.decoded = decoded;
+    next();
+  });
+}
 
 async function run() {
   try {
@@ -35,18 +54,50 @@ async function run() {
       const parlour = await cursor.toArray();
       res.send(parlour);
     });
+
+    app.get("/booking/:id", async (req, res) => {
+      console.log(req.params.email);
+      const result = await bookingCollection
+        .find({ email: req.params.email })
+        .toArray();
+      res.send(result);
+    });
+
+    // app.get("/booking/:id", async (req, res) => {
+    //   const id = req.params.id;
+    //   const query = { _id: ObjectId(id) };
+    //   const booking = await bookingCollection.findOne(query);
+    //   res.send(booking);
+    // });
+    app.get("/booking", async (req, res) => {
+      const patient = req.query.patient;
+      const decodedEmail = req.decoded.email;
+      if (patient === decodedEmail) {
+        const query = { patient: patient };
+        const bookings = await bookingCollection.find(query).toArray();
+        return res.send(bookings);
+      } else {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      // const authorization = req.headers.authorization;
+      // console.log("authorization", authorization);
+    });
     app.post("/booking", async (req, res) => {
       const booking = req.body;
       const query = {
         treatment: booking.treatment,
-        price: booking.price,
-        name: booking.name,
+        date: booking.date,
+        patient: booking.patient,
       };
       const exists = await bookingCollection.findOne(query);
       if (exists) {
         return res.send({ success: false, booking: exists });
       }
       const result = await bookingCollection.insertOne(booking);
+      //node mailer email
+      // console.log("sending email");
+      // sendAppointmentEmail(booking);
+
       return res.send({ success: true, result });
     });
   } finally {
