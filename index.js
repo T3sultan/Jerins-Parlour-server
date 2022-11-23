@@ -43,6 +43,18 @@ async function run() {
     const bookingCollection = parlours.collection("booking");
     const userCollection = parlours.collection("users");
 
+    const verifyAdmin = async (req, res, next) => {
+      const requester = req.decoded.email;
+      const requesterAccount = await userCollection.findOne({
+        email: requester,
+      });
+      if (requesterAccount.role === "admin") {
+        next();
+      } else {
+        res.status(403).send({ message: "Forbidden" });
+      }
+    };
+
     //service create api
     app.post("/parlour", async (req, res) => {
       const newParlour = req.body;
@@ -103,8 +115,8 @@ async function run() {
     });
 
     //user all
-    app.get("/user", async (req, res) => {
-      const users = await userCollection.find({}).toArray();
+    app.get("/user", verifyJWT, async (req, res) => {
+      const users = await userCollection.find().toArray();
       res.send(users);
     });
     //user token
@@ -112,7 +124,7 @@ async function run() {
       const email = req.params.email;
       const user = req.body;
       const filter = { email: email };
-      const options = { upset: true };
+      const options = { upsert: true };
       const updateDoc = {
         $set: user,
       };
@@ -124,12 +136,21 @@ async function run() {
       );
       res.send({ result, token });
     });
-    /// private make adming
-    app.get("/admin/:email", async (req, res) => {
+    /// private make admin
+    // app.get("/admin/:email", async (req, res) => {
+    //   const email = req.params.email;
+    //   const user = await userCollection.findOne({ email: email });
+    //   const isAdmin = user.role === "admin";
+    //   res.send({ admin: isAdmin });
+    // });
+    app.put("/user/admin/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
-      const user = userCollection.findOne({ email: email });
-      const isAdmin = user.role === "admin";
-      res.send({ admin: isAdmin });
+      const filter = { email: email };
+      const updateDoc = {
+        $set: { role: "admin" },
+      };
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
     });
   } finally {
     // await client.close()
