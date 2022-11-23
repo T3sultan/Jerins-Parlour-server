@@ -41,6 +41,7 @@ async function run() {
     const parlours = client.db("jerins-parlour");
     const parlourCollection = parlours.collection("parlours");
     const bookingCollection = parlours.collection("booking");
+    const userCollection = parlours.collection("users");
 
     //service create api
     app.post("/parlour", async (req, res) => {
@@ -55,21 +56,21 @@ async function run() {
       res.send(parlour);
     });
 
-    app.get("/booking/:id", async (req, res) => {
-      console.log(req.params.email);
-      const result = await bookingCollection
-        .find({ email: req.params.email })
-        .toArray();
-      res.send(result);
-    });
-
     // app.get("/booking/:id", async (req, res) => {
-    //   const id = req.params.id;
-    //   const query = { _id: ObjectId(id) };
-    //   const booking = await bookingCollection.findOne(query);
-    //   res.send(booking);
+    //   console.log(req.params.email);
+    //   const result = await bookingCollection
+    //     .find({ email: req.params.email })
+    //     .toArray();
+    //   res.send(result);
     // });
-    app.get("/booking", async (req, res) => {
+
+    app.get("/booking/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const booking = await bookingCollection.findOne(query);
+      res.send(booking);
+    });
+    app.get("/booking", verifyJWT, async (req, res) => {
       const patient = req.query.patient;
       const decodedEmail = req.decoded.email;
       if (patient === decodedEmail) {
@@ -99,6 +100,36 @@ async function run() {
       // sendAppointmentEmail(booking);
 
       return res.send({ success: true, result });
+    });
+
+    //user all
+    app.get("/user", async (req, res) => {
+      const users = await userCollection.find({}).toArray();
+      res.send(users);
+    });
+    //user token
+    app.put("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = req.body;
+      const filter = { email: email };
+      const options = { upset: true };
+      const updateDoc = {
+        $set: user,
+      };
+      const result = await userCollection.updateOne(filter, updateDoc, options);
+      const token = jwt.sign(
+        { email: email },
+        process.env.ACCESS_TOKEN_SECRET,
+        { expiresIn: "1h" }
+      );
+      res.send({ result, token });
+    });
+    /// private make adming
+    app.get("/admin/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = userCollection.findOne({ email: email });
+      const isAdmin = user.role === "admin";
+      res.send({ admin: isAdmin });
     });
   } finally {
     // await client.close()
