@@ -67,6 +67,23 @@ async function run() {
       const parlour = await cursor.toArray();
       res.send(parlour);
     });
+    //manage service
+    app.get("/parlourManage", verifyJWT, verifyAdmin, async (req, res) => {
+      const manage = await parlourCollection.find().toArray();
+      res.send(manage);
+    });
+    //delete api
+    app.delete(
+      "/parlourManage/:email",
+      verifyJWT,
+      verifyAdmin,
+      async (req, res) => {
+        const email = req.params.email;
+        const filter = { email: email };
+        const result = await parlourCollection.deleteOne(filter);
+        res.send(result);
+      }
+    );
 
     // app.get("/booking/:id", async (req, res) => {
     //   console.log(req.params.email);
