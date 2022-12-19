@@ -42,6 +42,7 @@ async function run() {
     const parlourCollection = parlours.collection("parlours");
     const bookingCollection = parlours.collection("booking");
     const userCollection = parlours.collection("users");
+    const reviewCollection = parlours.collection("reviews");
 
     const verifyAdmin = async (req, res, next) => {
       const requester = req.decoded.email;
@@ -167,6 +168,14 @@ async function run() {
         $set: { role: "admin" },
       };
       const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+    app.post("/addReview", async (req, res) => {
+      const result = await reviewCollection.insertOne(req.body);
+      res.send(result);
+    });
+    app.get("/reviewItem", async (req, res) => {
+      const result = reviewCollection.find({}).toArray();
       res.send(result);
     });
   } finally {
